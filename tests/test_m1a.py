@@ -45,6 +45,18 @@ def test_padding_preserves_content_and_patch_grid():
     assert padded.shape == (3,266,266)
     assert torch.all(padded[:,:256,:256] == 1)
 
+def test_aspect_preprocessing_resizes_without_stretching():
+    torch=pytest.importorskip("torch")
+    from PIL import Image
+    from overhead_ssl.preprocessing import prepare_aspect_preserved_input, resize_long_side_preserve_aspect
+    image=Image.new("RGB", (2120, 974))
+    resized=resize_long_side_preserve_aspect(image, 512, 14)
+    assert resized.size == (518, 238)
+    prepared=prepare_aspect_preserved_input(image, 1024, 14)
+    assert (prepared.content_height, prepared.content_width) == (470, 1022)
+    assert (prepared.encoder_height, prepared.encoder_width) == (476, 1022)
+    assert prepared.encoder_height % 14 == 0 and prepared.encoder_width % 14 == 0
+
 def test_pca_shape_and_fit_excludes_target_by_contract():
     p=SharedPCA().fit(np.random.default_rng(0).normal(size=(100,8)))
     assert p.transform_grid(np.zeros((4,5,8), dtype=np.float32)).shape == (4,5,3)
