@@ -1,3 +1,6 @@
+import hashlib
+from pathlib import Path
+
 import torch
 
 from .base import BaseDenseEncoder, DenseFeatureOutput, extract_patch_tokens, freeze_eval, _tokens_to_grid
@@ -13,6 +16,14 @@ class Dinov2SmallEncoder(BaseDenseEncoder):
         self.backbone = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
         self.to(device)
         freeze_eval(self)
+        checkpoint = Path(torch.hub.get_dir()) / "checkpoints" / "dinov2_vits14_pretrain.pth"
+        digest = hashlib.sha256()
+        with checkpoint.open("rb") as handle:
+            for block in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(block)
+        self.revision = f"official-checkpoint-sha256:{digest.hexdigest()}"
+        self.image_mean = (0.485, 0.456, 0.406)
+        self.image_std = (0.229, 0.224, 0.225)
 
     def encode(self, x: torch.Tensor) -> DenseFeatureOutput:
         with torch.inference_mode():

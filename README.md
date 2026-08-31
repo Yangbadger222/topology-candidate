@@ -41,6 +41,23 @@ The benchmark resizes full scenes to 256x256 and then 512x512, batch size 1. Bec
 Outputs under `outputs/M1A/` are intentionally ignored by Git. The external campus target belongs in `assets/external_target/`; if absent, the run reports `external target image not provided`.
 External target images are user-provided and excluded from repository version control. They must never be used for training or PCA fitting.
 
+## M2A protocol
+
+M2A is a Frozen Dense Semantic Linear Probe on official LoveDA semantic labels only. It uses a deterministic LoveDA Train internal split (seed `20260901`), 448x448 RGB, frozen FP16 dense feature caches stored outside the repository, one 1x1 convolutional head, and fixed seeds `20260901`, `20260902`, and `20260903`. Official LoveDA Val is final evaluation only. The external campus image is qualitative only and is never a training, development, PCA, or metric sample.
+
+```bash
+python scripts/prepare_m2a.py --data-root "$OVERHEAD_DATA_ROOT" \
+  --train-manifest "$OVERHEAD_DATA_ROOT/splits/ssl_train.csv" \
+  --val-manifest "$OVERHEAD_DATA_ROOT/splits/downstream_reserved_loveda_val.csv"
+python scripts/cache_m2a_features.py --backbone dinov2_vits14 --data-root "$OVERHEAD_DATA_ROOT" \
+  --cache-root /external/overhead_features/M2A \
+  --split probe_train data/splits/m2a_loveda_probe_train.csv \
+  --split probe_dev data/splits/m2a_loveda_probe_dev.csv \
+  --split val data/splits/m2a_loveda_val.csv
+```
+
+M2A does not fine-tune either foundation model. Generated features, probe heads, screenshots, predictions, and output images are ignored by Git.
+
 ## Provenance
 
 See `configs/models/` for checkpoint source, identifier, and official normalization. Record host package versions and benchmark results in `outputs/M1A/report.md` outside Git if desired. **No model training has been performed in M1A.**
