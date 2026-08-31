@@ -40,6 +40,7 @@ pytest -q
 The benchmark resizes full scenes to 256x256 and then 512x512, batch size 1. Because DINOv2 ViT-S/14 requires dimensions divisible by 14, its normalized tensor is right/bottom padded (not cropped) to 266x266/518x518; both content and encoder tensor sizes are recorded. DINOv3 stays at 256x256/512x512. CUDA timing includes synchronization and warmup, mean/median latency, peak allocated/reserved memory, parameter count, and actual dense feature shape. A 512 OOM is recorded and does not trigger repeated retries. No 1024 benchmark is performed in M1A.
 
 Outputs under `outputs/M1A/` are intentionally ignored by Git. The external campus target belongs in `assets/external_target/`; if absent, the run reports `external target image not provided`.
+External target images are user-provided and excluded from repository version control. They must never be used for training or PCA fitting.
 
 ## Provenance
 

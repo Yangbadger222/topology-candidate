@@ -23,6 +23,21 @@ def test_manifest_false_is_excluded(tmp_path):
     path.write_text("id,dataset,domain_or_scene,path,ssl_allowed\na,LoveDA,urban,data/a.jpg,false\nb,LoveDA,urban,data/b.jpg,true\n")
     assert load_manifest(path).id.tolist() == ["b"]
 
+def test_external_target_is_gitignored():
+    root = Path(__file__).parents[1]
+    ignore = (root / ".gitignore").read_text()
+    assert "assets/external_target/*" in ignore
+    assert "!assets/external_target/.gitkeep" in ignore
+
+def test_external_target_is_not_a_manifest_member(tmp_path):
+    target = tmp_path / "campus_target_001.png"
+    target.write_bytes(b"user-provided-target")
+    for name in ("ssl_train.csv", "ssl_holdout_naip.csv", "downstream_reserved_loveda_val.csv"):
+        manifest_path = tmp_path / name
+        manifest_path.write_text("id,path\npublic_001,data/processed/public.png\n")
+        assert str(target) not in manifest_path.read_text()
+
+
 def test_padding_preserves_content_and_patch_grid():
     torch=pytest.importorskip("torch")
     from overhead_ssl.data import pad_to_patch_multiple

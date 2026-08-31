@@ -15,3 +15,5 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 *.egg-info/
+assets/external_target/*
+!assets/external_target/.gitkeep
