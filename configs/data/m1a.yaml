@@ -1,0 +1,16 @@
+seed: 20260831
+manifest: data/splits/ssl_train.csv
+external_target_dir: assets/external_target
+sizes: [256, 512]
+batch_size: 1
+pca_l2_normalize: false
+sample_counts:
+  LoveDA/urban: 10
+  LoveDA/rural: 10
+  NAIP/campus_like: 10
+  NAIP/urban_residential: 10
+  NAIP/suburban_roads: 10
+  NAIP/wooded_roads: 10
+  NAIP/parks_open: 10
+  NAIP/rural: 10
+
