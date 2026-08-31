@@ -23,7 +23,9 @@ def run(name, ctor, size, device):
         torch.cuda.synchronize(); t=time.perf_counter()
         with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=torch.float16): out=model.encode(x)
         torch.cuda.synchronize(); times.append((time.perf_counter()-t)*1000)
-    return [name, size, x.shape[-1], sum(p.numel() for p in model.parameters()), "float16", device, sum(times)/len(times), sorted(times)[len(times)//2], torch.cuda.max_memory_allocated()/2**20, torch.cuda.max_memory_reserved()/2**20, tuple(out.features.shape)]
+    domain = "SAT-493M satellite imagery" if name == "dinov3_sat" else "LVD-142M web imagery"
+    label = "official DINOv3 ViT-L/16 SAT493M" if name == "dinov3_sat" else "official DINOv2 ViT-S/14"
+    return [label, sum(p.numel() for p in model.parameters()), domain, size, f"{x.shape[-2]}x{x.shape[-1]}", f"{out.grid_height}x{out.grid_width}", out.feature_dim, "float16", device, sum(times)/len(times), sorted(times)[len(times)//2], torch.cuda.max_memory_allocated()/2**20, torch.cuda.max_memory_reserved()/2**20, tuple(out.features.shape)]
 
 parser=argparse.ArgumentParser(); parser.add_argument("--output", default="outputs/M1A/benchmark.csv"); args=parser.parse_args()
 if not torch.cuda.is_available(): raise SystemExit("CUDA is required for M1A benchmark")
@@ -34,8 +36,7 @@ for size in (256,512):
         except RuntimeError as exc:
             message = str(exc)
             if "out of memory" in message.lower(): print(f"OOM,{name},{size}")
-            elif name == "dinov3_sat" and "SAT493M requires" in message: print(f"BLOCKED_OFFICIAL_WEIGHTS,{name},{size},{message}")
             else: raise
 Path(args.output).parent.mkdir(parents=True, exist_ok=True)
 with open(args.output,"w",newline="") as f:
-    csv.writer(f).writerows([["model","content_resize","encoder_tensor_size","parameter_count","dtype","device","mean_ms","median_ms","peak_allocated_mib","peak_reserved_mib","feature_shape"]]+rows)
+    csv.writer(f).writerows([["model","parameters","pretraining_domain","input_scale","actual_input_size","feature_grid","feature_dim","dtype","device","mean_ms","median_ms","peak_allocated_mib","peak_reserved_mib","feature_shape"]]+rows)

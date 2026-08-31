@@ -32,12 +32,12 @@ def resize_long_side_preserve_aspect(image: Image.Image, long_side: int, patch_s
     return image.resize(resized, Image.Resampling.BICUBIC)
 
 
-def prepare_aspect_preserved_input(image: Image.Image, long_side: int, patch_size: int) -> AspectPreservedInput:
+def prepare_aspect_preserved_input(image: Image.Image, long_side: int, patch_size: int, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)) -> AspectPreservedInput:
     resized = resize_long_side_preserve_aspect(image, long_side, patch_size)
     transform = v2.Compose([
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
-        v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        v2.Normalize(mean, std),
     ])
     content = transform(resized)
     tensor = pad_to_patch_multiple(content, patch_size)

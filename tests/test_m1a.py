@@ -57,6 +57,32 @@ def test_aspect_preprocessing_resizes_without_stretching():
     assert (prepared.encoder_height, prepared.encoder_width) == (476, 1022)
     assert prepared.encoder_height % 14 == 0 and prepared.encoder_width % 14 == 0
 
+def test_tokens_to_grid_discards_prefix_and_keeps_spatial_tokens():
+    torch=pytest.importorskip("torch")
+    from overhead_ssl.models.base import _tokens_to_grid
+    tokens=torch.arange(2 * 9 * 4).reshape(2, 9, 4)
+    grid, height, width=_tokens_to_grid(tokens, 32, 32, 16)
+    assert (height, width) == (2, 2)
+    assert torch.equal(grid.reshape(2, 4, 4), tokens[:, -4:])
+
+def test_dinov3_loader_is_pinned_to_official_satellite_repository():
+    from overhead_ssl.models.dinov3 import Dinov3SatelliteEncoder
+    assert Dinov3SatelliteEncoder.model_id == "facebook/dinov3-vitl16-pretrain-sat493m"
+    assert Dinov3SatelliteEncoder.revision_id == "f692fa42da72c6797b67cd73494a168d1120d3ee"
+
+def test_dinov3_constructor_freezes_entire_encoder(monkeypatch):
+    torch=pytest.importorskip("torch")
+    from overhead_ssl.models.dinov3 import Dinov3SatelliteEncoder
+    class Processor:
+        image_mean=(0.43,0.411,0.296); image_std=(0.213,0.156,0.143)
+    class Backbone(torch.nn.Linear):
+        def __init__(self):
+            super().__init__(2,2); self.config=type("Config",(),{"patch_size":16,"hidden_size":1024,"_commit_hash":Dinov3SatelliteEncoder.revision_id})()
+    monkeypatch.setattr("overhead_ssl.models.dinov3.AutoImageProcessor.from_pretrained", lambda *args,**kwargs: Processor())
+    monkeypatch.setattr("overhead_ssl.models.dinov3.AutoModel.from_pretrained", lambda *args,**kwargs: Backbone())
+    encoder=Dinov3SatelliteEncoder(device="cpu")
+    assert not encoder.training and all(not parameter.requires_grad for parameter in encoder.parameters())
+
 def test_pca_shape_and_fit_excludes_target_by_contract():
     p=SharedPCA().fit(np.random.default_rng(0).normal(size=(100,8)))
     assert p.transform_grid(np.zeros((4,5,8), dtype=np.float32)).shape == (4,5,3)

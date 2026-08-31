@@ -38,10 +38,11 @@ def _tokens_to_grid(tokens: torch.Tensor, height: int, width: int, patch: int) -
         raise ValueError(f"Expected token tensor [B,N,C], got {tuple(tokens.shape)}")
     gh, gw = height // patch, width // patch
     expected = gh * gw
-    if tokens.shape[1] == expected + 1:
-        tokens = tokens[:, 1:]
-    elif tokens.shape[1] != expected:
-        raise ValueError(f"Cannot infer dense grid: N={tokens.shape[1]}, expected {expected} or {expected + 1}")
+    if tokens.shape[1] < expected:
+        raise ValueError(f"Cannot infer dense grid: N={tokens.shape[1]}, expected at least {expected}")
+    # Official ViTs may prefix CLS and register tokens. Patch tokens are last.
+    if tokens.shape[1] > expected:
+        tokens = tokens[:, -expected:]
     return tokens.reshape(tokens.shape[0], gh, gw, tokens.shape[-1]), gh, gw
 
 
@@ -57,5 +58,7 @@ def extract_patch_tokens(raw: Any) -> torch.Tensor:
                 return value
     if torch.is_tensor(raw):
         return raw
+    value = getattr(raw, "last_hidden_state", None)
+    if torch.is_tensor(value):
+        return value
     raise TypeError(f"Unable to find patch tokens in {type(raw)!r}")
-

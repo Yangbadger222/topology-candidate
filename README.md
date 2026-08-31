@@ -19,14 +19,13 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 ```
 
-DINOv2 loads the official `facebookresearch/dinov2` PyTorch Hub checkpoint. DINOv3 requires the official repository and the access-controlled SAT-493M checkpoint; provide them explicitly:
+DINOv2 loads the official `facebookresearch/dinov2` PyTorch Hub checkpoint. DINOv3 SAT493M uses the official gated Hugging Face repository and the standard user-level Hugging Face cache. Authenticate interactively outside this repository, then the project venv reuses those credentials:
 
 ```bash
-export DINOV3_REPO=/path/to/official/dinov3
-export DINOV3_SAT493M_WEIGHTS=/external/weights/dinov3-vitl16-pretrain-sat493m.pth
+hf auth login
 ```
 
-If those variables or the accepted download are unavailable, DINOv3 is reported as blocked rather than replaced by another checkpoint.
+The loader is pinned to `facebook/dinov3-vitl16-pretrain-sat493m` revision `f692fa42da72c6797b67cd73494a168d1120d3ee`. If access is unavailable, DINOv3 is reported as blocked rather than replaced by another checkpoint. No token belongs in this repository.
 
 ## M1A commands
 
