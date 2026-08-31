@@ -1,0 +1,8 @@
+name: dinov2_small
+source: https://github.com/facebookresearch/dinov2
+checkpoint: dinov2_vits14 (official PyTorch Hub pretrained backbone)
+patch_size: 14
+normalization:
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+

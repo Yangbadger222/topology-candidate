@@ -1,0 +1,17 @@
+datasets/
+data/
+weights/
+checkpoints/
+outputs/features/
+outputs/M1A/
+*.pt
+*.pth
+*.ckpt
+*.tif
+*.tiff
+*.jp2
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/

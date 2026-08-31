@@ -1,0 +1,8 @@
+name: dinov3_sat
+source: https://github.com/facebookresearch/dinov3
+checkpoint: facebook/dinov3-vitl16-pretrain-sat493m (official access-controlled SAT-493M)
+patch_size: 16
+normalization:
+  mean: [0.430, 0.411, 0.296]
+  std: [0.213, 0.156, 0.143]
+
