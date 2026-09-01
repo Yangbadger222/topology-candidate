@@ -1,0 +1,59 @@
+experiment: M2B-v1 DINOv2-S Overhead Domain-Adaptive SSL
+seed: 20260901
+ssl_train_manifest: /home/badger/datasets/overhead_rgb/splits/ssl_train.csv
+data_root: /home/badger/datasets/overhead_rgb
+checkpoint_root: /home/badger/datasets/overhead_checkpoints/M2B/dinov2_vits14_overhead_ssl_v1
+epochs: 20
+samples_per_epoch: 6842
+source_balanced_weights:
+  LoveDA: 0.5
+  NAIP: 0.5
+crops:
+  global_size: 224
+  global_scale: [0.4, 1.0]
+  local_size: 98
+  local_scale: [0.05, 0.4]
+  global_views: 2
+  local_views: 2
+  rotations: [0, 90, 180, 270]
+masking:
+  ratio: 0.4
+  grid_size: 16
+objectives:
+  dino_global_weight: 1.0
+  ibot_patch_weight: 1.0
+  student_temperature: 0.1
+  teacher_temperature_start: 0.04
+  teacher_temperature_end: 0.07
+  center_momentum: 0.9
+  projection_prototypes: 65536
+  projection_hidden_dim: 2048
+  projection_bottleneck_dim: 256
+  projection_layers: 3
+optimizer:
+  name: AdamW
+  backbone_lr: 0.00001
+  head_lr: 0.0001
+  min_lr: 0.000001
+  weight_decay_start: 0.04
+  weight_decay_end: 0.4
+  warmup_epochs: 2
+  gradient_clip_norm: 3.0
+  beta1: 0.9
+  beta2: 0.999
+teacher_ema:
+  momentum_start: 0.996
+  momentum_end: 1.0
+batch:
+  requested_micro_batch: 8
+  fallback_micro_batches: [8, 4, 2, 1]
+  target_effective_batch: 64
+  actual_micro_batch: pending_smoke_test
+  accumulation_steps: pending_smoke_test
+mixed_precision:
+  preference: bf16
+checkpoints:
+  epochs: [0, 5, 10, 15, 20]
+labels_used_during_ssl: NONE
+campus_used_during_ssl: false
+dinov3_trained: false

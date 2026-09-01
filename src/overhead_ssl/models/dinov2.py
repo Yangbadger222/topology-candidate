@@ -31,3 +31,22 @@ class Dinov2SmallEncoder(BaseDenseEncoder):
         tokens = extract_patch_tokens(raw)
         features, gh, gw = _tokens_to_grid(tokens, x.shape[-2], x.shape[-1], self.patch_size)
         return DenseFeatureOutput(features, self.model_name, self.patch_size, features.shape[-1], x.shape[-2], x.shape[-1], gh, gw)
+
+
+class AdaptedDinov2SmallEncoder(Dinov2SmallEncoder):
+    """Frozen M2B-exported DINOv2-S encoder; projection heads are intentionally absent."""
+    model_name = "dinov2_vits14_overhead_ssl_v1"
+
+    def __init__(self, checkpoint: str | Path, device: str = "cuda"):
+        checkpoint = Path(checkpoint)
+        super().__init__(device=device)
+        payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
+        if payload.get("backbone_id") != self.model_name or "student_backbone" not in payload:
+            raise ValueError("Expected exported M2B student backbone checkpoint")
+        self.backbone.load_state_dict(payload["student_backbone"], strict=True)
+        digest = hashlib.sha256()
+        with checkpoint.open("rb") as handle:
+            for block in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(block)
+        self.revision = f"m2b-encoder-sha256:{digest.hexdigest()}"
+        freeze_eval(self)

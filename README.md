@@ -58,6 +58,12 @@ python scripts/cache_m2a_features.py --backbone dinov2_vits14 --data-root "$OVER
 
 M2A does not fine-tune either foundation model. Generated features, probe heads, screenshots, predictions, and output images are ignored by Git.
 
+## M2B protocol
+
+M2B-v1 domain-adapts only DINOv2 ViT-S/14 with RGB-only D3 SSL Train data (2,522 LoveDA Train images plus 4,320 NAIP Train images). It uses source-balanced sampling, two 224x224 global views, two 98x98 local views, DINO global self-distillation, iBOT masked patch prediction, EMA teacher updates, and a fixed 20-epoch recipe. Semantic masks, LoveDA Val, NAIP holdout, and the campus target are excluded from SSL training.
+
+The final exported encoder and all SSL checkpoints live outside the repository. Its downstream evaluation must reuse the immutable M2A split, class weights, linear head, and three seeds. No projection head is exported with the encoder.
+
 ## Provenance
 
 See `configs/models/` for checkpoint source, identifier, and official normalization. Record host package versions and benchmark results in `outputs/M1A/report.md` outside Git if desired. **No model training has been performed in M1A.**

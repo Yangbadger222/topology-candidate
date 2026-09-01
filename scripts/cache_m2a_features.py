@@ -11,27 +11,32 @@ from overhead_ssl.m2a import (
     INPUT_SIZE, cache_metadata, cache_path, cache_valid, ensure_rows_readable,
     rgb_tensor, sha256_file, write_feature_cache,
 )
-from overhead_ssl.models import Dinov2SmallEncoder, Dinov3SatelliteEncoder
+from overhead_ssl.models import AdaptedDinov2SmallEncoder, Dinov2SmallEncoder, Dinov3SatelliteEncoder
 
 
-def model_for(name):
+def model_for(name, checkpoint=None):
     if name == "dinov2_vits14":
         return Dinov2SmallEncoder(device="cuda")
     if name == "dinov3_sat_vitl16":
         return Dinov3SatelliteEncoder(device="cuda")
+    if name == "dinov2_vits14_overhead_ssl_v1":
+        if not checkpoint:
+            raise ValueError("Adapted M2B cache requires --checkpoint exported encoder path")
+        return AdaptedDinov2SmallEncoder(checkpoint=checkpoint, device="cuda")
     raise ValueError(f"Unknown backbone {name}")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--backbone", choices=["dinov2_vits14", "dinov3_sat_vitl16"], required=True)
+    parser.add_argument("--backbone", choices=["dinov2_vits14", "dinov3_sat_vitl16", "dinov2_vits14_overhead_ssl_v1"], required=True)
+    parser.add_argument("--checkpoint")
     parser.add_argument("--data-root", required=True)
     parser.add_argument("--cache-root", required=True)
     parser.add_argument("--split", action="append", nargs=2, metavar=("NAME", "CSV"), required=True)
     args = parser.parse_args()
     if not torch.cuda.is_available():
         raise SystemExit("M2A feature caching requires CUDA")
-    model = model_for(args.backbone)
+    model = model_for(args.backbone, args.checkpoint)
     if model.training or any(parameter.requires_grad for parameter in model.parameters()):
         raise RuntimeError("M2A foundation backbone must be frozen and in eval mode")
     root, cache_root = Path(args.data_root), Path(args.cache_root)
