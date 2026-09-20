@@ -1,6 +1,7 @@
 """Priority-ordered V2 repair actions."""
 VALID={"REAL","FALSE","UNCERTAIN"}
 SELECTIONS={"NO_CONNECTION","CORRECT_TARGET_NOT_PROPOSED","UNCERTAIN"}
+from .annotation_logic import is_candidate_selection
 
 def derive_source_action(component_validity):
     if component_validity == "FALSE": return "DELETE_SOURCE_SUBGRAPH"
@@ -20,7 +21,7 @@ def derive_action(component_validity, connection_label=None, selection=None):
     if choice in (None,"UNCERTAIN"): return "REVIEW"
     if choice == "CORRECT_TARGET_NOT_PROPOSED": return "CANDIDATE_MISS"
     if choice == "NO_CONNECTION": return "KEEP"
-    if choice.startswith("candidate_") or choice.startswith("T") or choice == "CONNECT": return "ADD_CONNECTION"
+    if is_candidate_selection(choice) or (isinstance(choice, str) and choice.startswith("T")) or choice == "CONNECT": return "ADD_CONNECTION"
     raise ValueError("invalid endpoint selection")
 
 def make_record(candidate, component_validity="UNCERTAIN", connection_label="UNCERTAIN", notes="", annotator="human", timestamp=None):

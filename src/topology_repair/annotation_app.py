@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from .annotation_schema import atomic_save, new_annotation, update_endpoint, update_source, SOURCE_REASON_CODES, ENDPOINT_REASON_CODES
 from .derive_action import derive_action
+from .annotation_logic import is_case_completed
 
 def _read_cases(path):
     data=json.loads(Path(path).read_text(encoding="utf-8")); return (data.get("cases",[]),data) if isinstance(data,dict) else (data,{})
@@ -22,7 +23,7 @@ def run(cases_path, labels_path, annotator="human"):
     filtered=[]
     for c in cases:
         r=records.get(c["source_subgraph_id"]); v=r.get("component_validity") if r else None
-        if validity_filter=="UNLABELED" and r: continue
+        if validity_filter=="UNLABELED" and is_case_completed(c, r): continue
         if validity_filter in ("REAL","FALSE","UNCERTAIN") and v != validity_filter: continue
         if type_filter!="ALL" and c.get("source_type")!=type_filter: continue
         filtered.append(c)
@@ -45,6 +46,7 @@ def run(cases_path, labels_path, annotator="human"):
     old_ep=old.get("endpoint_labels",{}).get(eid or "",{})
     options=[f"T{x['rank']}" for x in c.get("candidates",[])]+["NO_CONNECTION","CORRECT_TARGET_NOT_PROPOSED","UNCERTAIN"]
     candidate_by_display={f"T{x['rank']}":x["candidate_id"] for x in c.get("candidates",[])}
+    candidate_rank_map={x["candidate_id"]: x["rank"] for x in c.get("candidates",[])}
     display_old = next((f"T{x['rank']}" for x in c.get("candidates",[]) if x.get("candidate_id") == old_ep.get("selection")), old_ep.get("selection","UNCERTAIN"))
     if endpoint_id is None or cv != "REAL":
         selection=None
@@ -59,7 +61,7 @@ def run(cases_path, labels_path, annotator="human"):
         old["annotator"]=annotator; update_source(old,cv,source_reasons,source_notes)
         if endpoint_id is not None and cv == "REAL":
             choice=candidate_by_display.get(selection,selection)
-            update_endpoint(old,eid,choice,reasons,notes,candidate_by_display.values())
+            update_endpoint(old,eid,choice,reasons,notes,candidate_by_display.values(),candidate_rank_map)
             update_source(old,cv,source_reasons,source_notes)
         labels.update({"schema_version":2,"scene_id":scene_id,"annotations":list(records.values()),"provenance":meta.get("provenance",{})}); _save_labels(labels_path,labels)
     a,b,d,e=st.columns(4)
@@ -70,8 +72,7 @@ def run(cases_path, labels_path, annotator="human"):
         persist()
         nxt=current
         for j,x in enumerate(filtered[current+1:], current+1):
-            xeid=x.get("source_endpoint_id")
-            if x["source_subgraph_id"] not in records or str(xeid) not in records[x["source_subgraph_id"]].get("endpoint_labels",{}):
+            if not is_case_completed(x, records.get(x["source_subgraph_id"])):
                 nxt=j; break
         st.session_state.page=nxt; st.rerun()
     if st.button("Save"): persist(); st.success("已原子保存")

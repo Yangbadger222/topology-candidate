@@ -88,6 +88,18 @@ PYTHONPATH=src python scripts/summarize_topology_annotations.py \
 
 统计 source/endpoint 数量、source validity/type、source false reasons、endpoint selection、候选 rank 和 derived actions。
 
+`UNLABELED` 的语义是“当前 case 尚未完成”，不是“source 尚未创建 annotation record”。同一个 source 的多个 endpoint 分别判断：REAL source 中已保存 endpoint label 的页面完成，未保存的页面仍会出现在 UNLABELED 和 Next Unlabeled；FALSE/UNCERTAIN source 的所有页面完成，source-only 在 REAL/FALSE/UNCERTAIN 状态下也不再重复出现。
+
+Candidate ID 可以带 scene/source/endpoint 前缀，例如 `xjtlu_001_source_00001_ep_85_candidate_001`。统一解析器提取末尾 `_candidate_<rank>`，保存真实 ID 和 `candidate_rank`；T1...Tk 只是 UI 显示文本。非法 candidate selection 会被拒绝。
+
+Summary 分开报告 `source_actions`（KEEP/DELETE_SOURCE_SUBGRAPH/REVIEW）和 `endpoint_actions`（ADD_CONNECTION/KEEP/CANDIDATE_MISS/REVIEW），source-only 也会计入 source action。
+
+QA 测试：
+
+```bash
+PYTHONPATH=src pytest -q tests/test_topology_repair.py tests/test_topology_annotation_v2.py
+```
+
 ## 测试
 
 ```bash

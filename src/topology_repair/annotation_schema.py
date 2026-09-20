@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 import hashlib, json, os, tempfile
 from pathlib import Path
+from .annotation_logic import is_candidate_selection, candidate_rank_from_id
 
 SCHEMA_VERSION=2
 SOURCE_REASON_CODES=["ROOFTOP","BUILDING_EDGE","SHADOW","VEGETATION","NON_ROAD_LINEAR_STRUCTURE","AMBIGUOUS_SOURCE","OTHER"]
@@ -22,15 +23,14 @@ def new_annotation(scene_id, source, annotator="human", provenance=None):
             "source_reason_codes":[],"source_notes":"","endpoint_labels":{},
             "annotator":annotator,"created_at":now,"updated_at":now,"provenance":provenance or {}}
 
-def update_endpoint(annotation, endpoint_id, selection, reason_codes=None, notes="", candidate_ids=None):
+def update_endpoint(annotation, endpoint_id, selection, reason_codes=None, notes="", candidate_ids=None, candidate_rank_map=None):
     from .derive_action import derive_action
-    if selection not in set(candidate_ids or []) | {"NO_CONNECTION","CORRECT_TARGET_NOT_PROPOSED","UNCERTAIN"}: raise ValueError("unknown endpoint selection")
+    allowed = set(candidate_ids or []) | {"NO_CONNECTION","CORRECT_TARGET_NOT_PROPOSED","UNCERTAIN"}
+    if selection not in allowed: raise ValueError("unknown endpoint selection")
     label={"selection":selection,"derived_action":derive_action(annotation["component_validity"],selection),
         "reason_codes":list(reason_codes or []),"notes":notes}
-    if selection.startswith("candidate_"):
-        import re
-        match=re.search(r"(?:candidate[_-])(\d+)$", selection)
-        if match: label["candidate_rank"]=int(match.group(1))
+    if is_candidate_selection(selection):
+        label["candidate_rank"] = (candidate_rank_map or {}).get(selection, candidate_rank_from_id(selection))
     annotation["endpoint_labels"][str(endpoint_id)]=label
     annotation["updated_at"]=datetime.now(timezone.utc).isoformat(); return annotation
 
