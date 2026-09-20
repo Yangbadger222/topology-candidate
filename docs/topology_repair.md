@@ -16,10 +16,12 @@ PYTHONPATH=src python scripts/build_topology_annotation_cases.py \
   --image scene_001/satellite.jpg \
   --graph scene_001/gemini_graph.json \
   --scene-id scene_001 \
-  --output data/annotation_cases/scene_001
+  --output data/annotation_cases/scene_001 \
+  --radius 180 --top-k 5
 ```
 
 输出 `cases.json`、`source_inventory.json` 和四种渲染图。配置可通过 `--config` 指定；默认限制包括 source 节点/长度、最小 branch 长度、搜索半径和 Top-K。
+若 Gemini metadata 含 `image_width/image_height`，构建会严格检查 RGB 尺寸，不一致直接报错；缺失 metadata 会继续运行但记录 `graph_image_size_verified: false`。
 
 边解析会保留 `coordinates`、`polyline` 或 `geometry.coordinates` 中的完整 polyline；缺失时才退化为节点直线。重复无向 node pair 只保留输入中的第一条 canonical edge，方向统一为较小 node id 到较大 node id。长度、投影和渲染均基于 polyline 弧长/线段。
 
@@ -30,7 +32,7 @@ PYTHONPATH=src python scripts/build_topology_annotation_cases.py \
 - `disconnected_component`：主分量之外且通过大小/长度阈值的组件；
 - `leaf_branch`：从 degree-1 endpoint 沿 degree-2 链走到 junction 的 branch。删除 leaf branch 时只删除 branch-owned edges/nodes，attachment junction 保留。
 
-每个 source endpoint 生成 endpoint→endpoint 与 endpoint→polyline edge interior 候选。leaf branch 可以连接到同一 connected component 中、但不属于 source 的 edge。候选只保存几何/拓扑特征；MaGRoad support 如需使用是可选回调，不是输入要求。
+每个 source endpoint 生成 endpoint→endpoint 与 endpoint→polyline edge interior 候选。没有 endpoint 的闭环/孤立 source 仍生成一个 source-only case，并以 source 几何 bbox 中心渲染四视图。leaf branch 可以连接到同一 connected component 中、但不属于 source 的 edge。候选只保存几何/拓扑特征；MaGRoad support 如需使用是可选回调，不是输入要求。
 
 ## 标注 UI
 
@@ -40,9 +42,9 @@ streamlit run src/topology_repair/annotation_app.py -- \
   --labels data/labels/scene_001.json
 ```
 
-一个页面对应一个 source endpoint，而不是一个候选。页面提供 Raw/Overlay Local/Context 四个视图：黄色是 source，青色是周围 Gemini graph，白色 S 是 endpoint，绿色 T1/T2/T3 是候选 target。标注前不显示 heuristic、模型或 MaGRoad 分数。
+一个页面对应一个 source endpoint；没有 endpoint 时是一个 source-only 页面。页面提供 Raw/Overlay Local/Context 四个视图：黄色是 source，青色是周围 Gemini graph，白色 S 是 endpoint，绿色 T1...Tk 是候选 target。source-only 页面不显示 S/T 或连接问题。标注前不显示 heuristic、模型或 MaGRoad 分数。
 
-先回答 source validity：`REAL`、`FALSE`、`UNCERTAIN`。FALSE 直接结束该 source 的连接问题。REAL 时再选择 `T1...T3`、`NO_CONNECTION`、`CORRECT_TARGET_NOT_PROPOSED` 或 `UNCERTAIN`。其中 `CORRECT_TARGET_NOT_PROPOSED` 不等同于 NO_CONNECTION，可用于计算 candidate Top-K recall。Reason codes（如 `ROOFTOP`、`SHADOW`、`TRUE_DEAD_END`）和备注均为可选。
+先回答 source validity：`REAL`、`FALSE`、`UNCERTAIN`。只有 REAL 时才显示连接问题；FALSE/UNCERTAIN 都不继续询问连接。REAL source-only 的动作是 KEEP。Source reason（`ROOFTOP`、`BUILDING_EDGE`、`SHADOW`、`VEGETATION` 等）与 endpoint reason（`TRUE_DEAD_END`、`PARALLEL_ROAD`、`WRONG_TARGET`、`OCCLUDED_ROAD` 等）分开保存。REAL endpoint 可选择动态的 `T1...Tk`、`NO_CONNECTION`、`CORRECT_TARGET_NOT_PROPOSED` 或 `UNCERTAIN`；后者不等同于 NO_CONNECTION，可用于计算 candidate Top-K recall。
 
 ## Schema V2 与动作
 
@@ -55,6 +57,8 @@ streamlit run src/topology_repair/annotation_app.py -- \
   "source_subgraph_id": "source_00001",
   "source_type": "leaf_branch",
   "component_validity": "REAL",
+  "source_reason_codes": [],
+  "source_notes": "",
   "endpoint_labels": {
     "85": {
       "selection": "candidate_00031",
@@ -66,13 +70,23 @@ streamlit run src/topology_repair/annotation_app.py -- \
   "annotator": "human",
   "created_at": "...",
   "updated_at": "...",
-  "provenance": {"graph_sha256": "...", "image_sha256": "..."}
+  "provenance": {"graph_sha256": "...", "image_sha256": "...", "graph_image_size_verified": true}
 }
 ```
 
 动作优先级：`FALSE → DELETE_SOURCE_SUBGRAPH`；`UNCERTAIN component → REVIEW`；REAL + candidate → `ADD_CONNECTION`；REAL + `NO_CONNECTION → KEEP`；REAL + `CORRECT_TARGET_NOT_PROPOSED → CANDIDATE_MISS`；REAL + UNCERTAIN → `REVIEW`。FALSE 永远优先，即便 endpoint selection 未确定。
 
 保存使用 temporary file + flush/fsync + `os.replace`，避免长时间标注后损坏整个 JSON。原始 Gemini JSON 不会被修改。
+
+## 标注统计
+
+```bash
+PYTHONPATH=src python scripts/summarize_topology_annotations.py \
+  --labels data/labels/scene_001.json \
+  --output data/labels/scene_001.summary.json
+```
+
+统计 source/endpoint 数量、source validity/type、source false reasons、endpoint selection、候选 rank 和 derived actions。
 
 ## 测试
 

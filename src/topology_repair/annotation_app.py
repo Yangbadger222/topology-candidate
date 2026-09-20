@@ -1,7 +1,7 @@
 """Streamlit UI only; case construction lives in build_topology_annotation_cases.py."""
 import json
 from pathlib import Path
-from .annotation_schema import atomic_save, new_annotation, update_endpoint, REASON_CODES
+from .annotation_schema import atomic_save, new_annotation, update_endpoint, update_source, SOURCE_REASON_CODES, ENDPOINT_REASON_CODES
 from .derive_action import derive_action
 
 def _read_cases(path):
@@ -33,24 +33,34 @@ def run(cases_path, labels_path, annotator="human"):
     if jump:
         if jump.isdigit(): current=max(0,min(len(filtered)-1,int(jump)))
         elif jump in ids: current=ids.index(jump)
-    c=filtered[current]; sid=c["source_subgraph_id"]; eid=str(c["source_endpoint_id"]); source=c["source_inventory"]; old=records.get(sid)
+    c=filtered[current]; sid=c["source_subgraph_id"]; endpoint_id=c.get("source_endpoint_id"); eid=str(endpoint_id) if endpoint_id is not None else None; source=c["source_inventory"]; old=records.get(sid)
     if old is None: old=new_annotation(scene_id,source,annotator,meta.get("provenance",{})); records[sid]=old
-    st.title("Gemini Road Graph Topology Annotation V2"); st.caption(f"Scene: {scene_id} · Source: {sid} · Type: {c['source_type']} · Endpoint: {eid} · Progress: {current+1}/{len(filtered)}")
+    st.title("Gemini Road Graph Topology Annotation V2"); st.caption(f"Scene: {scene_id} · Source: {sid} · Type: {c['source_type']} · Endpoint: {eid or 'None'} · Progress: {current+1}/{len(filtered)}")
     tabs=st.tabs(["Overlay Local","Raw Local","Overlay Context","Raw Context"])
     for tab,name in zip(tabs,["overlay_local","raw_local","overlay_context","raw_context"]):
         with tab: st.image(c.get("views",{}).get(name),use_container_width=True)
     cv=st.radio("Q1 · Is this source subgraph a real road?",["REAL","FALSE","UNCERTAIN"],index=["REAL","FALSE","UNCERTAIN"].index(old.get("component_validity","UNCERTAIN")),horizontal=True,key=f"valid_{sid}")
-    old_ep=old.get("endpoint_labels",{}).get(eid,{})
+    source_reasons=st.multiselect("Source reason codes",SOURCE_REASON_CODES,default=old.get("source_reason_codes",[]),key=f"source_reason_{sid}")
+    source_notes=st.text_area("Source notes",old.get("source_notes",""),key=f"source_notes_{sid}")
+    old_ep=old.get("endpoint_labels",{}).get(eid or "",{})
     options=[f"T{x['rank']}" for x in c.get("candidates",[])]+["NO_CONNECTION","CORRECT_TARGET_NOT_PROPOSED","UNCERTAIN"]
     candidate_by_display={f"T{x['rank']}":x["candidate_id"] for x in c.get("candidates",[])}
-    if cv=="FALSE": selection="UNCERTAIN"; st.info("FALSE source 将直接删除整个 source subgraph，不需要连接判断。")
-    else: selection=st.radio("Q2 · Where should this endpoint connect?",options,index=options.index(old_ep.get("selection","UNCERTAIN")),horizontal=True,key=f"sel_{sid}_{eid}")
-    reasons=st.multiselect("Reason codes (optional)",REASON_CODES,default=old_ep.get("reason_codes",[]),key=f"reason_{sid}_{eid}"); notes=st.text_area("Notes",old_ep.get("notes",""),key=f"notes_{sid}_{eid}")
+    display_old = next((f"T{x['rank']}" for x in c.get("candidates",[]) if x.get("candidate_id") == old_ep.get("selection")), old_ep.get("selection","UNCERTAIN"))
+    if endpoint_id is None or cv != "REAL":
+        selection=None
+        if endpoint_id is not None: st.info("只有 REAL source 才需要回答 endpoint connection；当前页面不会覆盖 endpoint 选择历史。")
+    else:
+        selection=st.radio("Q2 · Where should this endpoint connect?",options,index=options.index(display_old) if display_old in options else len(options)-1,horizontal=True,key=f"sel_{sid}_{eid}")
+    if endpoint_id is not None:
+        reasons=st.multiselect("Endpoint reason codes",ENDPOINT_REASON_CODES,default=old_ep.get("reason_codes",[]),key=f"reason_{sid}_{eid}"); notes=st.text_area("Endpoint notes",old_ep.get("notes",""),key=f"notes_{sid}_{eid}")
+    else:
+        reasons=[]; notes=""
     def persist():
-        old["component_validity"]=cv; old["annotator"]=annotator
-        choice=candidate_by_display.get(selection,selection)
-        update_endpoint(old,eid,choice,reasons,notes,candidate_by_display.values())
-        if cv=="FALSE": old["endpoint_labels"]={k:{**v,"selection":"UNCERTAIN","derived_action":"DELETE_SOURCE_SUBGRAPH"} for k,v in old.get("endpoint_labels",{}).items()}
+        old["annotator"]=annotator; update_source(old,cv,source_reasons,source_notes)
+        if endpoint_id is not None and cv == "REAL":
+            choice=candidate_by_display.get(selection,selection)
+            update_endpoint(old,eid,choice,reasons,notes,candidate_by_display.values())
+            update_source(old,cv,source_reasons,source_notes)
         labels.update({"schema_version":2,"scene_id":scene_id,"annotations":list(records.values()),"provenance":meta.get("provenance",{})}); _save_labels(labels_path,labels)
     a,b,d,e=st.columns(4)
     if a.button("Previous"): persist(); st.session_state.page=max(0,current-1); st.rerun()
@@ -60,7 +70,8 @@ def run(cases_path, labels_path, annotator="human"):
         persist()
         nxt=current
         for j,x in enumerate(filtered[current+1:], current+1):
-            if x["source_subgraph_id"] not in records or str(x["source_endpoint_id"]) not in records[x["source_subgraph_id"]].get("endpoint_labels",{}):
+            xeid=x.get("source_endpoint_id")
+            if x["source_subgraph_id"] not in records or str(xeid) not in records[x["source_subgraph_id"]].get("endpoint_labels",{}):
                 nxt=j; break
         st.session_state.page=nxt; st.rerun()
     if st.button("Save"): persist(); st.success("已原子保存")

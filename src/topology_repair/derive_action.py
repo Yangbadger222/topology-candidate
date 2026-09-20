@@ -2,6 +2,12 @@
 VALID={"REAL","FALSE","UNCERTAIN"}
 SELECTIONS={"NO_CONNECTION","CORRECT_TARGET_NOT_PROPOSED","UNCERTAIN"}
 
+def derive_source_action(component_validity):
+    if component_validity == "FALSE": return "DELETE_SOURCE_SUBGRAPH"
+    if component_validity == "UNCERTAIN": return "REVIEW"
+    if component_validity == "REAL": return "KEEP"
+    raise ValueError("invalid component validity")
+
 def derive_action(component_validity, connection_label=None, selection=None):
     """Derive an action; FALSE always wins over endpoint uncertainty.
 

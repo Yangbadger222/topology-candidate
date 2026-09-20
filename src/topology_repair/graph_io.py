@@ -34,6 +34,7 @@ class RoadGraph:
     edges: list[Edge]
     graph: nx.Graph
     components: dict[int, set[int]]
+    metadata: dict[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "RoadGraph":
@@ -56,7 +57,7 @@ class RoadGraph:
         g = nx.Graph(); g.add_nodes_from(nodes)
         for e in edges: g.add_edge(e.source, e.target, edge_id=e.edge_id)
         components = {i: set(c) for i, c in enumerate(nx.connected_components(g))}
-        return cls(nodes, edges, g, components)
+        return cls(nodes, edges, g, components, dict(data.get("metadata") or {}))
 
     def component_id(self, node_id: int) -> int: return next(i for i,c in self.components.items() if node_id in c)
     def edge_by_id(self, edge_id: str) -> Edge: return next(e for e in self.edges if e.edge_id == edge_id)
