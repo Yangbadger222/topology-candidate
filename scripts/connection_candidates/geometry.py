@@ -38,6 +38,10 @@ def estimate_endpoint_tangent(g,n,lookback_length_px=30):
 
 
 def probability_features(geometry,p):
+    if p is None:
+        return {'mean':0.5,'median':0.5,'p10':0.5,'minimum':0.5,'maximum':0.5,'std':0.0,
+                'fraction_below_0.2':0.0,'fraction_below_0.3':0.0,'longest_low_probability_run_ratio':0.0,
+                'sample_count':0,'evidence_available':False}
     line=LineString(geometry);q=np.asarray([line.interpolate(s).coords[0] for s in np.linspace(0,line.length,max(16,math.ceil(line.length)+1))])
     if (q<0).any() or (q[:,0]>p.shape[1]-1).any() or (q[:,1]>p.shape[0]-1).any():raise ValueError('Candidate outside probability frame')
     from scipy.ndimage import map_coordinates

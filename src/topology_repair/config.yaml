@@ -1,5 +1,11 @@
 search_radius_px: 128
 top_k: 3
-crop_size_px: 768
+local_crop_size_px: 512
+context_crop_size_px: 1024
+max_disconnected_component_nodes: 64
+max_disconnected_component_length_px: 2000
+max_leaf_branch_nodes: 64
+max_leaf_branch_length_px: 1000
+min_branch_length_px: 4
 uncertain_policy: review
 split_by: scene_id

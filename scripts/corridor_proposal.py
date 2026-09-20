@@ -74,7 +74,10 @@ def seeds(ctx,i,j):
 
 
 def generate_corridors(ctx,c):
-    p=ctx.p;cost=(1+c.corridor_lambda_prob*(1-p)**c.corridor_gamma+c.low_probability_penalty*(p<c.low_prob_threshold)).astype(np.float32)
+    # Geometry-only mode uses a neutral raster solely for path-cost calculation;
+    # output probability_features retain evidence_available=False.
+    p=ctx.p if ctx.p is not None else np.full((max(2,int(np.ceil(max((n[1] for n in ctx.g.nodes(data='y')),default=1)))+2), max(2,int(np.ceil(max((n[1] for n in ctx.g.nodes(data='x')),default=1)))+2)), .5, dtype=np.float32)
+    cost=(1+c.corridor_lambda_prob*(1-p)**c.corridor_gamma+c.low_probability_penalty*(p<c.low_prob_threshold)).astype(np.float32)
     pairs=component_pairs(ctx,c);rows=[];logs=[]
     for pair_number,(i,j) in enumerate(pairs):
         if pair_number%100==0:print(f"corridor pair {pair_number}/{len(pairs)} searches={len(logs)}",flush=True)
