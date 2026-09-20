@@ -8,6 +8,11 @@ outputs/features/
 outputs/M1A/
 outputs/M2A/
 outputs/M2B/
+# Generated inference/evaluation artifacts are local and can be very large.
+outputs/
+road_network_centerlines.png
+road_network_centerlines_pruned.png
+road_topology_overlay_preview.jpg
 *.pt
 *.pth
 *.ckpt

@@ -1,0 +1,21 @@
+# Planned training configuration; not a trained model or selected threshold.
+status: awaiting_reviewed_gt
+seed: 42
+encoder_frozen: true
+model: MLP
+hidden_dimensions: [256, 64]
+dropout: 0.1
+learning_rate: 0.001
+batch_size: 64
+epochs: 50
+class_imbalance: weighted_BCE_train_only
+feature_groups: [geometry, probability, encoder]
+path_samples: 33
+native_path_samples: 32
+positive_distance: 8
+positive_overlap: 0.9
+negative_distance: 20
+candidate_distance: [20, 120]
+candidate_max_angle: 45
+edge_threshold_selection: validation_F1_and_precision_0.9
+connect_threshold_selection: validation_precision_0.9_then_max_recall

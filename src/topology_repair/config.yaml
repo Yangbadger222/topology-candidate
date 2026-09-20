@@ -1,0 +1,5 @@
+search_radius_px: 128
+top_k: 3
+crop_size_px: 768
+uncertain_policy: review
+split_by: scene_id

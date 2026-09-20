@@ -1,0 +1,13 @@
+--- model.py
++++ model.py
+@@ -771,6 +771,10 @@
+ 
+         if self.config.NO_SAM:
+             return
++        # Road-only adaptation loads the complete WildRoad state immediately.
++        if self.config.get("MAGROAD_INIT_ONLY", False):
++            self.matched_param_names = set()
++            return
+         with open(config.SAM_CKPT_PATH, "rb") as f:
+             ckpt_state_dict = torch.load(f)
+ 
